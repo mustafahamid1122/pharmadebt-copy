@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#047857">
+<title>ديون الصيدلية</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="ديون الصيدلية">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" href="icon-180.png">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f1f5f9;--card:#fff;--tx:#1e293b;--mut:#64748b;--bd:#e2e8f0;--pri:#059669;--red:#be123c;--amb:#d97706}
+@media(prefers-color-scheme:dark){:root{--bg:#0f172a;--card:#1e293b;--tx:#f1f5f9;--mut:#94a3b8;--bd:#334155}}
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Tahoma,sans-serif;background:var(--bg);color:var(--tx);padding:env(safe-area-inset-top) 0 calc(env(safe-area-inset-bottom) + 70px)}
+.wrap{max-width:480px;margin:0 auto;padding:12px}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:16px;padding:14px;margin-bottom:10px}
+h1,h2,h3{margin:0}
+input,select,button{font:inherit;width:100%;padding:11px;border-radius:12px;border:1px solid var(--bd);background:var(--bg);color:var(--tx);margin-top:8px}
+button{background:var(--pri);color:#fff;border:0;font-weight:700;cursor:pointer}
+button.sec{background:var(--bd);color:var(--tx)} button.red{background:var(--red)} button.amb{background:var(--amb)}
+button.sm{width:auto;padding:6px 12px;margin:0;font-size:13px}
+.row{display:flex;gap:8px;align-items:center;justify-content:space-between}
+.tabs{display:flex;gap:6px}.tabs button{margin:0;background:var(--bd);color:var(--tx);font-size:13px}.tabs .on{background:var(--pri);color:#fff}
+.top{background:linear-gradient(to left,#047857,#0d9488);color:#fff;padding:14px 12px}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:10px;text-align:center;font-size:12px}
+.stats div{background:#ffffff26;border-radius:10px;padding:6px}.stats b{display:block;font-size:13px}
+.badge{padding:3px 9px;border-radius:9px;font-size:12px;font-weight:700;background:#fef3c7;color:#92400e}
+.badge.ok{background:#d1fae5;color:#065f46}.badge.late{background:#ffe4e6;color:#9f1239}
+.mut{color:var(--mut);font-size:13px}.err{color:var(--red);font-size:13px;margin-top:8px}
+.bar{position:fixed;bottom:0;inset-inline:0;background:var(--card);border-top:1px solid var(--bd);padding:8px 12px calc(env(safe-area-inset-bottom) + 8px)}
+.bar .wrap{padding:0;display:flex;gap:8px}.bar button{margin:0}
+body{font-family:Tajawal,system-ui,-apple-system,"Segoe UI",Tahoma,sans-serif}
+.card{box-shadow:0 1px 3px #0000000f;transition:transform .12s}
+.card[data-d]:active{transform:scale(.98)}
+.top{border-radius:0 0 24px 24px;box-shadow:0 6px 18px #04785533}
+.stats div{backdrop-filter:blur(6px)}
+input:focus,select:focus{outline:2px solid #05966966;border-color:var(--pri)}
+button:active{opacity:.85;transform:scale(.98)}
+.brand{display:flex;align-items:center;gap:10px;min-width:0}
+.logo{width:44px;height:44px;border-radius:12px;flex:none}
+.hero{text-align:center;padding:30px 0 10px}
+.hero .logo{width:80px;height:80px;border-radius:22px;box-shadow:0 8px 24px #04785555}
+.hero h1{font-size:26px;margin-top:12px}.hero p{color:var(--mut);margin:6px 0 0;font-size:14px}
+.item{display:flex;gap:12px;align-items:center}
+.item .mid{flex:1;min-width:0}.item .mid b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.av{width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,#059669,#0d9488);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:19px;flex:none}
+.av.late{background:linear-gradient(135deg,#e11d48,#be123c)}.av.ok{background:linear-gradient(135deg,#94a3b8,#64748b)}
+.empty{text-align:center;padding:40px 12px;color:var(--mut);line-height:1.8}.empty .big{font-size:46px}
+@media print{body>*:not(#stm){display:none!important}#stm{position:static!important;background:#fff!important;padding:0!important}.noprint{display:none!important}}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script>
+const SB_URL = 'https://gsftoyjqolqapfypbrlj.supabase.co';
+const SB_KEY = 'sb_publishable_bouA5kYTi7JhrXHIoHSstQ_cEkFFip3';
+const sb = supabase.createClient(SB_URL, SB_KEY);
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmt = n => Number(n || 0).toLocaleString('en-US') + ' د.ع';
+const today = () => new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+const toEmail = p => p.replace(/\D/g, '') + '@pharmacy.app';
+let me = null, debtors = [], view = 'list', current = null, authMode = 'login', msg = '', q = '';
+const isMgr = () => me && me.role === 'manager';
+const LOGO = '<svg class="logo" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><defs><linearGradient id="lg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#059669"/><stop offset="1" stop-color="#0d9488"/></linearGradient></defs><rect width="64" height="64" rx="16" fill="url(#lg)"/><rect x="26" y="12" width="12" height="40" rx="4" fill="#fff"/><rect x="12" y="26" width="40" height="12" rx="4" fill="#fff"/><circle cx="48" cy="48" r="9" fill="#f59e0b" stroke="#fff" stroke-width="3"/></svg>';
+
+async function boot() {
+  const { data: { session } } = await sb.auth.getSession();
+  if (session) await loadMe();
+  render();
+}
+async function loadMe() {
+  const { data } = await sb.from('profiles').select('*, pharmacies(*)').eq('id', (await sb.auth.getUser()).data.user.id).maybeSingle();
+  me = data && data.active ? data : null;
+  if (me) await loadDebtors();
+}
+async function loadDebtors() {
+  const { data } = await sb.from('debtor_summary').select('*').order('created_at', { ascending: false });
+  debtors = data || [];
+}
+function go(v, d) { view = v; current = d || null; msg = ''; render(); }
+
+function render() {
+  const app = $('app');
+  if (!me) return app.innerHTML = authHtml(), bindAuth();
+  if (view === 'list') return listHtml(app);
+  if (view === 'new') return newHtml(app);
+  if (view === 'detail') return detailHtml(app);
+  if (view === 'staff') return staffHtml(app);
+  if (view === 'report') return reportHtml(app);
+}
+
+/* ---------- Receipts ---------- */
+function compress(file, max = 900) {
+  return new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload = () => {
+      const i = new Image();
+      i.onload = () => {
+        const s = Math.min(1, max / Math.max(i.width, i.height));
+        const c = document.createElement('canvas');
+        c.width = Math.round(i.width * s); c.height = Math.round(i.height * s);
+        c.getContext('2d').drawImage(i, 0, 0, c.width, c.height);
+        c.toBlob(b => b ? res(b) : rej(new Error('تعذر معالجة الصورة')), 'image/jpeg', 0.75);
+      };
+      i.onerror = () => rej(new Error('ملف الصورة غير صالح'));
+      i.src = r.result;
+    };
+    r.onerror = () => rej(new Error('تعذر قراءة الصورة'));
+    r.readAsDataURL(file);
+  });
+}
+async function uploadReceipt(file) {
+  if (!file) return null;
+  const blob = await compress(file);
+  const path = `${me.pharmacy_id}/${crypto.randomUUID()}.jpg`;
+  const { error } = await sb.storage.from('receipts').upload(path, blob, { contentType: 'image/jpeg' });
+  if (error) throw error;
+  return path;
+}
+async function showReceipt(path) {
+  const { data, error } = await sb.storage.from('receipts').createSignedUrl(path, 300);
+  if (error) return alert('تعذر فتح الصورة');
+  const o = document.createElement('div');
+  o.style.cssText = 'position:fixed;inset:0;background:#000d;z-index:9;display:flex;align-items:center;justify-content:center;padding:16px';
+  o.innerHTML = `<img src="${data.signedUrl}" alt="" style="max-width:100%;max-height:90%;border-radius:12px">`;
+  o.onclick = () => o.remove();
+  document.body.appendChild(o);
+}
+
+/* ---------- Auth ---------- */
+function authHtml() {
+  const t = (m, l) => `<button type="button" class="${authMode === m ? 'on' : ''}" data-m="${m}">${l}</button>`;
+  return `<div class="wrap"><div class="hero">${LOGO}<h1>ديون الصيدلية</h1><p>سجّل ديون زبائنك وتابع التسديد بسهولة</p></div><div class="card">
+  <div class="tabs" style="margin-top:12px">${t('login', 'دخول')}${t('register', 'صيدلية جديدة')}${t('join', 'انضمام بكود')}</div>
+  <form id="af">
+  ${authMode !== 'login' ? '<input id="fn" required placeholder="اسمك الكامل">' : ''}
+  ${authMode === 'register' ? '<input id="pn" required placeholder="اسم الصيدلية"><input id="wa" placeholder="واتساب الصيدلية" inputmode="tel">' : ''}
+  ${authMode === 'join' ? '<input id="cd" required placeholder="كود الدعوة من المدير" dir="ltr">' : ''}
+  <input id="ph" required placeholder="رقم الهاتف" inputmode="tel" dir="ltr">
+  <input id="pw" required type="password" placeholder="كلمة المرور (6 أحرف على الأقل)" dir="ltr" minlength="6">
+  <button type="submit">${authMode === 'login' ? 'دخول' : 'إنشاء الحساب'}</button></form>
+  <div class="err">${esc(msg)}</div></div></div>`;
+}
+function bindAuth() {
+  document.querySelectorAll('[data-m]').forEach(b => b.onclick = () => { authMode = b.dataset.m; msg = ''; render(); });
+  $('af').onsubmit = async e => {
+    e.preventDefault(); msg = '';
+    const sbtn = e.target.querySelector('button[type=submit]');
+    if (sbtn.disabled) return; sbtn.disabled = true; sbtn.textContent = 'جاري المعالجة...';
+    const phone = $('ph').value.trim(), pw = $('pw').value, email = toEmail(phone);
+    try {
+      if (authMode === 'login') {
+        const { error } = await sb.auth.signInWithPassword({ email, password: pw });
+        if (error) throw new Error('رقم الهاتف أو كلمة المرور غير صحيحة');
+      } else {
+        const { data, error } = await sb.auth.signUp({ email, password: pw });
+        if (error) throw new Error(error.message);
+        if (!data.session) throw new Error('فعّل الدخول المباشر: عطّل Confirm email في Supabase');
+        const fn = $('fn').value.trim();
+        const r = authMode === 'register'
+          ? await sb.rpc('register_pharmacy', { p_pharmacy_name: $('pn').value.trim(), p_full_name: fn, p_phone: phone, p_whatsapp: $('wa').value.trim(), p_address: '' })
+          : await sb.rpc('join_pharmacy', { p_code: $('cd').value, p_full_name: fn, p_phone: phone });
+        if (r.error) throw new Error(r.error.message.includes('invalid code') ? 'كود الدعوة غير صحيح' : r.error.message);
+      }
+      await loadMe(); view = 'list';
+      if (!me) { msg = 'الحساب غير مفعّل'; await sb.auth.signOut(); }
+    } catch (err) { msg = err.message; }
+    render();
+  };
+}
+
+/* ---------- List ---------- */
+function listHtml(app) {
+  const rem = debtors.reduce((s, d) => s + Number(d.remaining), 0);
+  const paid = debtors.reduce((s, d) => s + Number(d.total_paid), 0);
+  const late = debtors.filter(d => d.remaining > 0 && d.due_date && d.due_date < today()).length;
+  const f = debtors.filter(d => !q || (d.name + d.phone).toLowerCase().includes(q.toLowerCase()));
+  app.innerHTML = `<div class="top"><div class="wrap" style="padding:0"><div class="row"><div class="brand">${LOGO}<div style="min-width:0"><h3>${esc(me.pharmacies.name)}</h3><div style="font-size:12px;opacity:.85">${esc(me.full_name)} • ${isMgr() ? 'مدير 👑' : 'موظف'}</div></div></div>
+  <div style="display:flex;gap:6px"><button class="sm sec" id="pw" title="تغيير كلمة المرور">🔑</button><button class="sm sec" id="lo">خروج</button></div></div>
+  <div class="stats"><div>المتبقي<b>${fmt(rem)}</b></div><div>المسدد<b>${fmt(paid)}</b></div><div>متأخر<b>${late}</b></div></div></div></div>
+  <div class="wrap"><input id="qs" placeholder="🔍 ابحث بالاسم أو الهاتف" value="${esc(q)}">
+  <div style="margin-top:10px">${f.map(d => {
+    const lt = d.remaining > 0 && d.due_date && d.due_date < today();
+    return `<div class="card item" data-d="${d.id}" style="cursor:pointer"><div class="av ${d.remaining == 0 ? 'ok' : lt ? 'late' : ''}">${esc([...(d.name || '؟')][0])}</div>
+    <div class="mid"><b>${esc(d.name)}</b><div class="mut" dir="ltr" style="text-align:right">${esc(d.phone)}${d.due_date ? ' • ' + esc(d.due_date) : ''}</div></div>
+    <span class="badge ${d.remaining == 0 ? 'ok' : lt ? 'late' : ''}">${d.remaining == 0 ? 'مسدد ✓' : fmt(d.remaining)}</span></div>`;
+  }).join('') || '<div class="empty"><div class="big">📋</div>لا توجد سجلات بعد<br>اضغط «+ دين جديد» للبدء</div>'}</div></div>
+  <div class="bar"><div class="wrap"><button id="nw">+ دين جديد</button>${isMgr() ? '<button class="sec" id="rp" style="width:30%">📊 الجرد</button><button class="sec" id="sf" style="width:34%">الموظفون</button>' : ''}</div></div>`;
+  $('lo').onclick = async () => { await sb.auth.signOut(); me = null; render(); };
+  $('pw').onclick = async () => {
+    const p = prompt('اكتب كلمة المرور الجديدة (6 أحرف على الأقل)');
+    if (p === null) return;
+    if (p.length < 6) return alert('كلمة المرور قصيرة، لازم 6 أحرف على الأقل');
+    const { error } = await sb.auth.updateUser({ password: p });
+    alert(error ? 'تعذر التغيير: ' + error.message : 'تم تغيير كلمة المرور ✓');
+  };
+  $('nw').onclick = () => go('new');
+  if (isMgr()) { $('sf').onclick = () => go('staff'); $('rp').onclick = () => go('report'); }
+  $('qs').oninput = e => { q = e.target.value; const p = e.target.selectionStart; render(); $('qs').focus(); $('qs').setSelectionRange(p, p); };
+  app.querySelectorAll('[data-d]').forEach(c => c.onclick = () => go('detail', debtors.find(d => d.id === c.dataset.d)));
+}
+
+/* ---------- New debtor ---------- */
+function newHtml(app) {
+  app.innerHTML = `<div class="wrap"><div class="card"><div class="row"><h3>دين جديد</h3><button class="sm sec" id="bk">رجوع</button></div>
+  <form id="nf"><input id="n" required placeholder="اسم الزبون"><input id="p" required placeholder="رقم الهاتف" inputmode="tel" dir="ltr">
+  <input id="a" required type="number" min="250" step="250" placeholder="المبلغ (د.ع)" inputmode="numeric">
+  <label class="mut">موعد السداد</label><input id="du" type="date" value="${today()}">
+  <input id="no" placeholder="الأدوية / ملاحظات">
+  <label class="mut">صورة الوصل (اختياري)</label><input id="rc" type="file" accept="image/*">
+  <button type="submit">حفظ</button></form><div class="err">${esc(msg)}</div></div></div>`;
+  $('bk').onclick = () => go('list');
+  $('nf').onsubmit = async e => {
+    e.preventDefault();
+    const sbtn = e.target.querySelector('button[type=submit]');
+    if (sbtn.disabled) return; sbtn.disabled = true; sbtn.textContent = 'جاري الحفظ...';
+    let rp = null;
+    try { rp = await uploadReceipt($('rc').files[0]); } catch (er) { msg = 'تعذر رفع الصورة: ' + er.message; return render(); }
+    const base = { pharmacy_id: me.pharmacy_id, created_by: me.id };
+    const { data: d, error } = await sb.from('debtors').insert({ ...base, name: $('n').value.trim(), phone: $('p').value.trim(), due_date: $('du').value || null }).select().single();
+    if (error) { msg = error.message; return render(); }
+    const t = await sb.from('transactions').insert({ ...base, debtor_id: d.id, type: 'debt', tx_date: today(), amount: Number($('a').value), due_date: $('du').value || null, notes: $('no').value.trim() || null, receipt_path: rp });
+    if (t.error) { msg = t.error.message; return render(); }
+    await loadDebtors(); go('list');
+  };
+}
+
+/* ---------- Detail ---------- */
+async function detailHtml(app) {
+  app.innerHTML = '<div class="wrap"><div class="card mut">جاري التحميل...</div></div>';
+  const d = current;
+  const { data: txs } = await sb.from('transactions').select('*, profiles(full_name)').eq('debtor_id', d.id).order('created_at', { ascending: false });
+  const wa = d.phone.replace(/\D/g, '').replace(/^0/, '964');
+  const text = `السلام عليكم ${d.name} 🌿\nتذكير بلطف من ${me.pharmacies.name}: المتبقي عليكم ${fmt(d.remaining)}.\nشكراً لتعاونكم.`;
+  app.innerHTML = `<div class="wrap"><div class="card"><div class="row"><h3>${esc(d.name)}</h3><button class="sm sec" id="bk">رجوع</button></div>
+  <div class="mut" dir="ltr" style="text-align:right">${esc(d.phone)}</div>
+  <div class="stats" style="color:var(--tx)"><div style="background:var(--bg)">الدين<b>${fmt(d.total_debt)}</b></div><div style="background:var(--bg)">المسدد<b>${fmt(d.total_paid)}</b></div><div style="background:var(--bg)">المتبقي<b>${fmt(d.remaining)}</b></div></div>
+  <form id="tf"><select id="ty"><option value="payment">تسديد دفعة</option><option value="debt">إضافة دين</option></select>
+  <input id="am" required type="number" min="250" step="250" placeholder="المبلغ" inputmode="numeric"><input id="nt" placeholder="ملاحظات"><label class="mut">صورة الوصل (اختياري)</label><input id="rc" type="file" accept="image/*"><button type="submit">حفظ العملية</button></form>
+  ${d.remaining > 0 ? `<a href="https://wa.me/${wa}?text=${encodeURIComponent(text)}" target="_blank" rel="noopener"><button type="button" class="amb">💬 تذكير واتساب</button></a>` : ''}
+  <button type="button" class="sec" id="st">🖨️ كشف حساب</button>
+  ${isMgr() ? '<button class="sec" id="ed">✏️ تعديل الاسم والهاتف</button><button class="red" id="dd">🗑️ حذف الزبون (مدير)</button>' : ''}<div class="err">${esc(msg)}</div></div>
+  ${(txs || []).map(t => `<div class="card"><div class="row"><span class="badge ${t.type === 'payment' ? 'ok' : 'late'}">${t.type === 'payment' ? 'دفعة' : 'دين'}</span><b>${fmt(t.amount)}</b></div>
+  <div class="mut">${esc(t.notes || '—')}<br>${esc(t.tx_date)} • ${esc(t.profiles ? t.profiles.full_name : '')}</div>
+  ${t.receipt_path ? `<button type="button" class="sm sec" data-r="${esc(t.receipt_path)}" style="margin-top:8px">🧾 عرض الوصل</button>` : ''}
+  ${isMgr() ? `<button class="sm red" data-x="${t.id}" style="margin-top:8px">حذف</button>` : ''}</div>`).join('')}</div>`;
+  $('bk').onclick = async () => { await loadDebtors(); go('list'); };
+  app.querySelectorAll('[data-r]').forEach(b => b.onclick = () => showReceipt(b.dataset.r));
+  $('st').onclick = () => openStatement(d, txs || []);
+  const refresh = async () => { await loadDebtors(); current = debtors.find(x => x.id === d.id); current ? render() : go('list'); };
+  $('tf').onsubmit = async e => {
+    e.preventDefault();
+    const sbtn = e.target.querySelector('button[type=submit]');
+    if (sbtn.disabled) return; sbtn.disabled = true; sbtn.textContent = 'جاري الحفظ...';
+    let rp = null;
+    try { rp = await uploadReceipt($('rc').files[0]); } catch (er) { msg = 'تعذر رفع الصورة: ' + er.message; return render(); }
+    const { error } = await sb.from('transactions').insert({ pharmacy_id: me.pharmacy_id, debtor_id: d.id, created_by: me.id, type: $('ty').value, tx_date: today(), amount: Number($('am').value), notes: $('nt').value.trim() || null, receipt_path: rp });
+    if (error) { msg = error.message; return render(); }
+    refresh();
+  };
+  app.querySelectorAll('[data-x]').forEach(b => b.onclick = async () => {
+    if (!confirm('حذف هذه العملية؟')) return;
+    await sb.from('transactions').delete().eq('id', b.dataset.x); refresh();
+  });
+  if (isMgr()) $('ed').onclick = async () => {
+    const n = prompt('اسم الزبون', d.name);
+    if (n === null || !n.trim()) return;
+    const ph = prompt('رقم الهاتف', d.phone);
+    if (ph === null || !ph.trim()) return;
+    const { error } = await sb.from('debtors').update({ name: n.trim(), phone: ph.trim() }).eq('id', d.id);
+    if (error) { msg = error.message; return render(); }
+    await refresh();
+  };
+  if (isMgr()) $('dd').onclick = async () => {
+    if (!confirm('حذف الزبون وكل سجلاته؟')) return;
+    await sb.from('debtors').delete().eq('id', d.id); await loadDebtors(); go('list');
+  };
+}
+
+/* ---------- Statement ---------- */
+function openStatement(d, txs) {
+  const rows = [...txs].reverse();
+  const th = 'text-align:right;padding:6px';
+  const o = document.createElement('div');
+  o.id = 'stm';
+  o.style.cssText = 'position:fixed;inset:0;background:#000b;z-index:9;overflow:auto;padding:12px';
+  o.innerHTML = `<div class="wrap" style="padding:0"><div style="background:#fff;color:#111;border-radius:14px;padding:16px">
+  <h3 style="color:#047857">${esc(me.pharmacies.name)} — كشف حساب</h3>
+  <div style="font-size:13px;color:#555">${esc(today())}${me.pharmacies.whatsapp ? ' • واتساب: ' + esc(me.pharmacies.whatsapp) : ''}</div>
+  <hr style="border:0;border-top:1px solid #e2e8f0;margin:10px 0">
+  <div><b>${esc(d.name)}</b> <span dir="ltr">${esc(d.phone)}</span></div>
+  <table style="width:100%;border-collapse:collapse;font-size:13px;margin-top:10px">
+  <tr style="background:#f1f5f9"><th style="${th}">التاريخ</th><th style="${th}">العملية</th><th style="${th}">البيان</th><th style="${th}">المبلغ</th></tr>
+  ${rows.map(t => `<tr style="border-bottom:1px solid #e2e8f0"><td style="padding:6px">${esc(t.tx_date)}</td>
+  <td style="padding:6px;color:${t.type === 'debt' ? '#be123c' : '#047857'};font-weight:700">${t.type === 'debt' ? 'دين' : 'دفعة'}</td>
+  <td style="padding:6px">${esc(t.notes || '—')}</td><td style="padding:6px;font-weight:700">${fmt(t.amount)}</td></tr>`).join('')}
+  </table>
+  <div style="margin-top:12px;font-size:14px">الدين: ${fmt(d.total_debt)} • المسدد: ${fmt(d.total_paid)}<br>
+  <b style="color:#be123c;font-size:17px">المتبقي: ${fmt(d.remaining)}</b></div></div>
+  <div class="noprint" style="margin-top:10px">
+  <button id="stP">🖨️ طباعة / حفظ PDF</button><button id="stI" class="amb">📤 مشاركة كصورة</button><button id="stC" class="sec">إغلاق</button></div></div>`;
+  document.body.appendChild(o);
+  $('stC').onclick = () => o.remove();
+  $('stP').onclick = () => window.print();
+  $('stI').onclick = async () => {
+    const blob = await stmImage(d, rows);
+    const f = new File([blob], 'statement.png', { type: 'image/png' });
+    if (navigator.canShare && navigator.canShare({ files: [f] })) {
+      try { await navigator.share({ files: [f] }); return; } catch (e) { if (e.name === 'AbortError') return; }
+    }
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = 'statement.png'; a.click();
+  };
+}
+function stmImage(d, rows) {
+  const W = 700, H = 280 + rows.length * 44 + 90;
+  const c = document.createElement('canvas'); c.width = W; c.height = H;
+  const x = c.getContext('2d');
+  const F = 'system-ui,-apple-system,sans-serif';
+  x.fillStyle = '#fff'; x.fillRect(0, 0, W, H);
+  x.direction = 'rtl'; x.textAlign = 'right';
+  x.fillStyle = '#047857'; x.fillRect(0, 0, W, 70);
+  x.fillStyle = '#fff'; x.font = 'bold 24px ' + F;
+  x.fillText(me.pharmacies.name + ' — كشف حساب', W - 24, 44);
+  x.fillStyle = '#111'; x.font = 'bold 20px ' + F;
+  x.fillText(d.name + '  ' + d.phone, W - 24, 112);
+  x.fillStyle = '#555'; x.font = '15px ' + F;
+  x.fillText('تاريخ الإصدار: ' + today(), W - 24, 140);
+  let y = 190;
+  rows.forEach((t, i) => {
+    x.fillStyle = i % 2 ? '#fff' : '#f1f5f9'; x.fillRect(16, y - 26, W - 32, 40);
+    x.fillStyle = t.type === 'debt' ? '#be123c' : '#047857'; x.font = 'bold 15px ' + F;
+    x.fillText((t.tx_date + '  ' + (t.type === 'debt' ? 'دين' : 'دفعة') + '  ' + fmt(t.amount) + '  ' + (t.notes || '')).slice(0, 70), W - 26, y);
+    y += 44;
+  });
+  y += 24; x.fillStyle = '#111'; x.font = 'bold 17px ' + F;
+  x.fillText('الدين ' + fmt(d.total_debt) + ' • المسدد ' + fmt(d.total_paid), W - 24, y);
+  y += 36; x.fillStyle = '#be123c'; x.font = 'bold 22px ' + F;
+  x.fillText('المتبقي: ' + fmt(d.remaining), W - 24, y);
+  return new Promise(r => c.toBlob(r, 'image/png'));
+}
+
+/* ---------- Report (manager) ---------- */
+let rpRange = 'month';
+async function reportHtml(app) {
+  app.innerHTML = '<div class="wrap"><div class="card mut">جاري التحميل...</div></div>';
+  const t = today(), m = t.slice(0, 7) + '-01';
+  let qy = sb.from('transactions').select('type, amount, tx_date, profiles(full_name)').limit(5000);
+  if (rpRange === 'today') qy = qy.eq('tx_date', t);
+  if (rpRange === 'month') qy = qy.gte('tx_date', m);
+  const { data } = await qy;
+  const by = {};
+  (data || []).forEach(x => {
+    const n = x.profiles ? x.profiles.full_name : '—';
+    const s = by[n] || (by[n] = { debt: 0, pay: 0, n: 0 });
+    s.n++;
+    if (x.type === 'debt') s.debt += Number(x.amount); else s.pay += Number(x.amount);
+  });
+  const names = Object.keys(by);
+  const tot = names.reduce((a, k) => ({ debt: a.debt + by[k].debt, pay: a.pay + by[k].pay, n: a.n + by[k].n }), { debt: 0, pay: 0, n: 0 });
+  const tab = (k, l) => `<button type="button" class="${rpRange === k ? 'on' : ''}" data-rg="${k}">${l}</button>`;
+  const bg = 'style="background:var(--bg)"';
+  app.innerHTML = `<div class="wrap"><div class="card"><div class="row"><h3>📊 تقرير الجرد</h3><button class="sm sec" id="bk">رجوع</button></div>
+  <div class="tabs" style="margin-top:12px">${tab('today', 'اليوم')}${tab('month', 'هذا الشهر')}${tab('all', 'الكل')}</div>
+  <div class="stats" style="color:var(--tx)"><div ${bg}>ديون مسجلة<b>${fmt(tot.debt)}</b></div><div ${bg}>تسديدات مستلمة<b>${fmt(tot.pay)}</b></div><div ${bg}>عدد العمليات<b>${tot.n}</b></div></div></div>
+  ${names.map(k => `<div class="card"><div class="row"><b>${esc(k)}</b><span class="mut">${by[k].n} عملية</span></div>
+  <div class="stats" style="color:var(--tx)"><div ${bg}>ديون مسجلة<b style="color:var(--red)">${fmt(by[k].debt)}</b></div><div ${bg}>تسديدات مستلمة<b style="color:var(--pri)">${fmt(by[k].pay)}</b></div></div></div>`).join('') || '<div class="empty"><div class="big">📭</div>لا توجد عمليات بهذه الفترة</div>'}</div>`;
+  $('bk').onclick = () => go('list');
+  app.querySelectorAll('[data-rg]').forEach(b => b.onclick = () => { rpRange = b.dataset.rg; render(); });
+}
+
+/* ---------- Backup (manager) ---------- */
+async function backup(kind) {
+  $('bm').textContent = 'جاري التجهيز...';
+  const [d, t] = await Promise.all([
+    sb.from('debtors').select('*').limit(50000),
+    sb.from('transactions').select('*, profiles(full_name)').limit(50000)
+  ]);
+  if (d.error || t.error) { $('bm').textContent = 'تعذر تنزيل النسخة، حاول مرة ثانية'; return; }
+  let blob, ext;
+  if (kind === 'json') {
+    blob = new Blob([JSON.stringify({ exported_at: new Date().toISOString(), pharmacy: me.pharmacies.name, debtors: d.data, transactions: t.data }, null, 2)], { type: 'application/json' });
+    ext = 'json';
+  } else {
+    const byId = Object.fromEntries(d.data.map(x => [x.id, x]));
+    const cell = v => { const s = String(v ?? ''); return '"' + (/^[=+\-@]/.test(s) ? "'" + s : s).replace(/"/g, '""') + '"'; };
+    const rows = [['الزبون', 'الهاتف', 'التاريخ', 'النوع', 'المبلغ', 'الملاحظات', 'الموظف']];
+    t.data.forEach(x => {
+      const z = byId[x.debtor_id] || {};
+      rows.push([z.name, z.phone, x.tx_date, x.type === 'debt' ? 'دين' : 'دفعة', x.amount, x.notes, x.profiles ? x.profiles.full_name : '']);
+    });
+    blob = new Blob(['\uFEFF' + rows.map(r => r.map(cell).join(',')).join('\n')], { type: 'text/csv;charset=utf-8' });
+    ext = 'csv';
+  }
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = `pharmacy-backup-${today()}.${ext}`; a.click();
+  $('bm').textContent = 'تم تجهيز الملف ✓';
+}
+
+/* ---------- Staff (manager) ---------- */
+async function staffHtml(app) {
+  const { data: st } = await sb.from('profiles').select('*').order('created_at');
+  app.innerHTML = `<div class="wrap"><div class="card"><div class="row"><h3>الموظفون</h3><button class="sm sec" id="bk">رجوع</button></div>
+  <p class="mut">أعطِ الموظف هذا الكود، ويسجل من تبويب «انضمام بكود»:</p>
+  <div class="card" style="text-align:center;font-size:22px;font-weight:800;letter-spacing:2px" dir="ltr">${esc(me.pharmacies.invite_code)}</div></div>
+  <div class="card"><h3>💾 نسخة احتياطية</h3><p class="mut">نزّل نسخة من كل الديون والعمليات واحتفظ بها بمكان آمن (مثلاً كل أسبوع).</p>
+  <button id="bj">تنزيل نسخة كاملة (JSON)</button><button id="bc" class="sec">تنزيل جدول Excel (CSV)</button><div class="mut" id="bm" style="margin-top:8px"></div></div>
+  ${(st || []).map(s => `<div class="card"><div class="row"><div><b>${esc(s.full_name)}</b> <span class="badge ${s.role === 'manager' ? '' : 'ok'}">${s.role === 'manager' ? 'مدير' : 'موظف'}</span>
+  <div class="mut" dir="ltr" style="text-align:right">${esc(s.phone || '')}</div></div>
+  ${s.id !== me.id ? `<button class="sm ${s.active ? 'red' : ''}" data-t="${s.id}" data-a="${s.active}">${s.active ? 'إيقاف' : 'تفعيل'}</button>` : '<span class="mut">أنت</span>'}</div></div>`).join('')}</div>`;
+  $('bk').onclick = () => go('list');
+  $('bj').onclick = () => backup('json');
+  $('bc').onclick = () => backup('csv');
+  app.querySelectorAll('[data-t]').forEach(b => b.onclick = async () => {
+    await sb.from('profiles').update({ active: b.dataset.a !== 'true' }).eq('id', b.dataset.t); render();
+  });
+}
+
+boot();
+</script>
+</body>
+</html>

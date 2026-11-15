@@ -51,6 +51,10 @@ button:active{opacity:.85;transform:scale(.98)}
 .av{width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,#059669,#0d9488);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:19px;flex:none}
 .av.late{background:linear-gradient(135deg,#e11d48,#be123c)}.av.ok{background:linear-gradient(135deg,#94a3b8,#64748b)}
 .empty{text-align:center;padding:40px 12px;color:var(--mut);line-height:1.8}.empty .big{font-size:46px}
+:root[data-theme=dark]{--bg:#0f172a;--card:#1e293b;--tx:#f1f5f9;--mut:#94a3b8;--bd:#334155}
+:root[data-theme=light]{--bg:#f1f5f9;--card:#fff;--tx:#1e293b;--mut:#64748b;--bd:#e2e8f0}
+.age{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;text-align:center;font-size:12px;margin-top:10px}
+.age div{background:var(--bg);border-radius:10px;padding:6px}.age b{display:block;font-size:13px}
 @media print{body>*:not(#stm){display:none!important}#stm{position:static!important;background:#fff!important;padding:0!important}.noprint{display:none!important}}
 </style>
 </head>
@@ -94,6 +98,8 @@ function render() {
   if (view === 'detail') return detailHtml(app);
   if (view === 'staff') return staffHtml(app);
   if (view === 'report') return reportHtml(app);
+  if (view === 'trash') return trashHtml(app);
+  if (view === 'audit') return auditHtml(app);
 }
 
 /* ---------- Receipts ---------- */
@@ -183,7 +189,7 @@ function listHtml(app) {
   const late = debtors.filter(d => d.remaining > 0 && d.due_date && d.due_date < today()).length;
   const f = debtors.filter(d => !q || (d.name + d.phone).toLowerCase().includes(q.toLowerCase()));
   app.innerHTML = `<div class="top"><div class="wrap" style="padding:0"><div class="row"><div class="brand">${LOGO}<div style="min-width:0"><h3>${esc(me.pharmacies.name)}</h3><div style="font-size:12px;opacity:.85">${esc(me.full_name)} • ${isMgr() ? 'مدير 👑' : 'موظف'}</div></div></div>
-  <div style="display:flex;gap:6px"><button class="sm sec" id="pw" title="تغيير كلمة المرور">🔑</button><button class="sm sec" id="lo">خروج</button></div></div>
+  <div style="display:flex;gap:6px"><button class="sm sec" id="th" title="الوضع الليلي / النهاري">🌙</button><button class="sm sec" id="pw" title="تغيير كلمة المرور">🔑</button><button class="sm sec" id="lo">خروج</button></div></div>
   <div class="stats"><div>المتبقي<b>${fmt(rem)}</b></div><div>المسدد<b>${fmt(paid)}</b></div><div>متأخر<b>${late}</b></div></div></div></div>
   <div class="wrap"><input id="qs" placeholder="🔍 ابحث بالاسم أو الهاتف" value="${esc(q)}">
   <div style="margin-top:10px">${f.map(d => {
@@ -192,8 +198,9 @@ function listHtml(app) {
     <div class="mid"><b>${esc(d.name)}</b><div class="mut" dir="ltr" style="text-align:right">${esc(d.phone)}${d.due_date ? ' • ' + esc(d.due_date) : ''}</div></div>
     <span class="badge ${d.remaining == 0 ? 'ok' : lt ? 'late' : ''}">${d.remaining == 0 ? 'مسدد ✓' : fmt(d.remaining)}</span></div>`;
   }).join('') || '<div class="empty"><div class="big">📋</div>لا توجد سجلات بعد<br>اضغط «+ دين جديد» للبدء</div>'}</div></div>
-  <div class="bar"><div class="wrap"><button id="nw">+ دين جديد</button>${isMgr() ? '<button class="sec" id="rp" style="width:30%">📊 الجرد</button><button class="sec" id="sf" style="width:34%">الموظفون</button>' : ''}</div></div>`;
+  <div class="bar"><div class="wrap"><button id="nw">+ دين جديد</button>${isMgr() ? '<button class="sec" id="rp" style="width:24%">📊 الجرد</button><button class="sec" id="sf" style="width:24%">الموظفون</button><button class="sec" id="tr" style="width:24%">🗑️ السلة</button><button class="sec" id="au" style="width:24%">📜 السجل</button>' : ''}</div></div>`;
   $('lo').onclick = async () => { await sb.auth.signOut(); me = null; render(); };
+  $('th').onclick = () => toggleTheme();
   $('pw').onclick = async () => {
     const p = prompt('اكتب كلمة المرور الجديدة (6 أحرف على الأقل)');
     if (p === null) return;
@@ -202,7 +209,7 @@ function listHtml(app) {
     alert(error ? 'تعذر التغيير: ' + error.message : 'تم تغيير كلمة المرور ✓');
   };
   $('nw').onclick = () => go('new');
-  if (isMgr()) { $('sf').onclick = () => go('staff'); $('rp').onclick = () => go('report'); }
+  if (isMgr()) { $('sf').onclick = () => go('staff'); $('rp').onclick = () => go('report'); $('tr').onclick = () => go('trash'); $('au').onclick = () => go('audit'); }
   $('qs').oninput = e => { q = e.target.value; const p = e.target.selectionStart; render(); $('qs').focus(); $('qs').setSelectionRange(p, p); };
   app.querySelectorAll('[data-d]').forEach(c => c.onclick = () => go('detail', debtors.find(d => d.id === c.dataset.d)));
 }
@@ -228,6 +235,7 @@ function newHtml(app) {
     if (error) { msg = error.message; return render(); }
     const t = await sb.from('transactions').insert({ ...base, debtor_id: d.id, type: 'debt', tx_date: today(), amount: Number($('a').value), due_date: $('du').value || null, notes: $('no').value.trim() || null, receipt_path: rp });
     if (t.error) { msg = t.error.message; return render(); }
+    logAct('add_debtor', 'debtor', d.id, { name: d.name, amount: Number($('a').value) });
     await loadDebtors(); go('list');
   };
 }
@@ -263,10 +271,18 @@ async function detailHtml(app) {
     try { rp = await uploadReceipt($('rc').files[0]); } catch (er) { msg = 'تعذر رفع الصورة: ' + er.message; return render(); }
     const { error } = await sb.from('transactions').insert({ pharmacy_id: me.pharmacy_id, debtor_id: d.id, created_by: me.id, type: $('ty').value, tx_date: today(), amount: Number($('am').value), notes: $('nt').value.trim() || null, receipt_path: rp });
     if (error) { msg = error.message; return render(); }
+    logAct($('ty').value === 'payment' ? 'payment' : 'add_debt', 'transaction', d.id, { amount: Number($('am').value) });
     refresh();
   };
   app.querySelectorAll('[data-x]').forEach(b => b.onclick = async () => {
-    if (!confirm('حذف هذه العملية؟')) return;
+    if (!confirm('حذف هذه العملية؟ تنتقل لسلة المحذوفات وتكدر تسترجعها.')) return;
+    const tx = (txs || []).find(t => t.id === b.dataset.x);
+    if (tx) {
+      const { profiles, ...row } = tx;
+      const saved = await trashIt('transaction', row);
+      if (!saved && !confirm('سلة المحذوفات غير مفعّلة بعد (طبّق supabase-upgrade.sql). حذف نهائي؟')) return;
+      if (saved) logAct('delete', 'transaction', row.id, { amount: row.amount, type: row.type });
+    }
     await sb.from('transactions').delete().eq('id', b.dataset.x); refresh();
   });
   if (isMgr()) $('ed').onclick = async () => {
@@ -279,7 +295,13 @@ async function detailHtml(app) {
     await refresh();
   };
   if (isMgr()) $('dd').onclick = async () => {
-    if (!confirm('حذف الزبون وكل سجلاته؟')) return;
+    if (!confirm('حذف الزبون وكل سجلاته؟ ينتقل لسلة المحذوفات وتكدر تسترجعه.')) return;
+    const { data: raw } = await sb.from('debtors').select('*').eq('id', d.id).maybeSingle();
+    const cleanTxs = (txs || []).map(t => { const { profiles, ...rest } = t; return rest; });
+    const saved = await trashIt('debtor', { debtor: raw || d, transactions: cleanTxs });
+    if (!saved && !confirm('سلة المحذوفات غير مفعّلة بعد (طبّق supabase-upgrade.sql). حذف نهائي؟')) return;
+    if (saved) logAct('delete', 'debtor', d.id, { name: d.name });
+    await sb.from('transactions').delete().eq('debtor_id', d.id);
     await sb.from('debtors').delete().eq('id', d.id); await loadDebtors(); go('list');
   };
 }
@@ -374,6 +396,16 @@ async function reportHtml(app) {
   <div class="stats" style="color:var(--tx)"><div ${bg}>ديون مسجلة<b style="color:var(--red)">${fmt(by[k].debt)}</b></div><div ${bg}>تسديدات مستلمة<b style="color:var(--pri)">${fmt(by[k].pay)}</b></div></div></div>`).join('') || '<div class="empty"><div class="big">📭</div>لا توجد عمليات بهذه الفترة</div>'}</div>`;
   $('bk').onclick = () => go('list');
   app.querySelectorAll('[data-rg]').forEach(b => b.onclick = () => { rpRange = b.dataset.rg; render(); });
+  const ag = { a: 0, b: 0, c: 0, d: 0 };
+  debtors.filter(x => Number(x.remaining) > 0 && x.due_date).forEach(x => {
+    const days = Math.floor((new Date(today()) - new Date(x.due_date)) / 864e5);
+    if (days > 90) ag.d += Number(x.remaining); else if (days > 60) ag.c += Number(x.remaining);
+    else if (days > 30) ag.b += Number(x.remaining); else if (days > 0) ag.a += Number(x.remaining);
+  });
+  const top5 = [...debtors].filter(x => Number(x.remaining) > 0).sort((x, y) => Number(y.remaining) - Number(x.remaining)).slice(0, 5);
+  app.querySelector('.wrap').insertAdjacentHTML('beforeend', `<div class="card"><h3>⏰ أعمار الديون المتأخرة</h3>
+  <div class="age"><div>1–30 يوم<b>${fmt(ag.a)}</b></div><div>31–60 يوم<b>${fmt(ag.b)}</b></div><div>61–90 يوم<b>${fmt(ag.c)}</b></div><div>+90 يوم<b style="color:var(--red)">${fmt(ag.d)}</b></div></div></div>
+  ${top5.length ? `<div class="card"><h3>🏆 أكبر المتبقيات</h3>${top5.map(x => `<div class="row" style="margin-top:8px"><span>${esc(x.name)}</span><b>${fmt(x.remaining)}</b></div>`).join('')}</div>` : ''}`);
 }
 
 /* ---------- Backup (manager) ---------- */
@@ -401,6 +433,7 @@ async function backup(kind) {
   }
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob); a.download = `pharmacy-backup-${today()}.${ext}`; a.click();
+  try { localStorage.setItem('lastBackup', today()); } catch (e) {}
   $('bm').textContent = 'تم تجهيز الملف ✓';
 }
 
@@ -410,17 +443,90 @@ async function staffHtml(app) {
   app.innerHTML = `<div class="wrap"><div class="card"><div class="row"><h3>الموظفون</h3><button class="sm sec" id="bk">رجوع</button></div>
   <p class="mut">أعطِ الموظف هذا الكود، ويسجل من تبويب «انضمام بكود»:</p>
   <div class="card" style="text-align:center;font-size:22px;font-weight:800;letter-spacing:2px" dir="ltr">${esc(me.pharmacies.invite_code)}</div></div>
-  <div class="card"><h3>💾 نسخة احتياطية</h3><p class="mut">نزّل نسخة من كل الديون والعمليات واحتفظ بها بمكان آمن (مثلاً كل أسبوع).</p>
+  <div class="card"><h3>💾 نسخة احتياطية</h3><p class="mut">نزّل نسخة من كل الديون والعمليات واحتفظ بها بمكان آمن (مثلاً كل أسبوع). <b id="lb"></b></p>
   <button id="bj">تنزيل نسخة كاملة (JSON)</button><button id="bc" class="sec">تنزيل جدول Excel (CSV)</button><div class="mut" id="bm" style="margin-top:8px"></div></div>
   ${(st || []).map(s => `<div class="card"><div class="row"><div><b>${esc(s.full_name)}</b> <span class="badge ${s.role === 'manager' ? '' : 'ok'}">${s.role === 'manager' ? 'مدير' : 'موظف'}</span>
   <div class="mut" dir="ltr" style="text-align:right">${esc(s.phone || '')}</div></div>
   ${s.id !== me.id ? `<button class="sm ${s.active ? 'red' : ''}" data-t="${s.id}" data-a="${s.active}">${s.active ? 'إيقاف' : 'تفعيل'}</button>` : '<span class="mut">أنت</span>'}</div></div>`).join('')}</div>`;
   $('bk').onclick = () => go('list');
+  const lbEl = $('lb'); if (lbEl) { const lbv = (() => { try { return localStorage.getItem('lastBackup'); } catch (e) { return null; } })(); lbEl.textContent = lbv ? 'آخر نسخة: ' + lbv : '⚠️ لا توجد نسخة منزّلة بعد'; }
   $('bj').onclick = () => backup('json');
   $('bc').onclick = () => backup('csv');
   app.querySelectorAll('[data-t]').forEach(b => b.onclick = async () => {
-    await sb.from('profiles').update({ active: b.dataset.a !== 'true' }).eq('id', b.dataset.t); render();
+    await sb.from('profiles').update({ active: b.dataset.a !== 'true' }).eq('id', b.dataset.t); logAct('staff_toggle', 'profile', b.dataset.t, { active: b.dataset.a !== 'true' }); render();
   });
+}
+
+/* ---------- Upgrade: theme / auto-lock / audit / trash ---------- */
+try { const th = localStorage.getItem('theme'); if (th) document.documentElement.dataset.theme = th; } catch (e) {}
+function toggleTheme() {
+  const dark = document.documentElement.dataset.theme === 'dark' || (!document.documentElement.dataset.theme && matchMedia('(prefers-color-scheme: dark)').matches);
+  document.documentElement.dataset.theme = dark ? 'light' : 'dark';
+  try { localStorage.setItem('theme', document.documentElement.dataset.theme); } catch (e) {}
+}
+let lastAct = Date.now();
+['click', 'keydown', 'touchstart', 'input'].forEach(ev => addEventListener(ev, () => { lastAct = Date.now(); }, { passive: true }));
+setInterval(async () => {
+  if (me && Date.now() - lastAct > 10 * 60 * 1000) {
+    await sb.auth.signOut(); me = null;
+    alert('تم تسجيل الخروج تلقائياً بعد 10 دقائق بدون استخدام، لحماية المعلومات.');
+    render();
+  }
+}, 30000);
+async function logAct(action, entity, entityId, details) {
+  try { await sb.from('audit_log').insert({ pharmacy_id: me.pharmacy_id, user_id: me.id, user_name: me.full_name, action, entity, entity_id: entityId ? String(entityId) : null, details: details || null }); } catch (e) {}
+}
+async function trashIt(entity, payload) {
+  try { const { error } = await sb.from('trash_items').insert({ pharmacy_id: me.pharmacy_id, deleted_by: me.id, deleted_by_name: me.full_name, entity, payload }); return !error; } catch (e) { return false; }
+}
+const ACT_LBL = { add_debtor: 'إضافة زبون/دين', add_debt: 'إضافة دين', payment: 'تسديد دفعة', delete: 'حذف (للسلة)', restore: 'استرجاع من السلة', purge: 'حذف نهائي من السلة', staff_toggle: 'تفعيل/إيقاف موظف' };
+async function trashHtml(app) {
+  app.innerHTML = '<div class="wrap"><div class="card mut">جاري التحميل...</div></div>';
+  const { data, error } = await sb.from('trash_items').select('*').order('created_at', { ascending: false }).limit(200);
+  const head = '<div class="row"><h3>🗑️ سلة المحذوفات</h3><button class="sm sec" id="bk">رجوع</button></div>';
+  if (error) {
+    app.innerHTML = `<div class="wrap"><div class="card">${head}<p class="mut" style="margin-top:10px">السلة غير مفعّلة بعد. طبّق ملف <b>supabase-upgrade.sql</b> في Supabase (SQL Editor) حتى تشتغل السلة وسجل التدقيق.</p></div></div>`;
+    $('bk').onclick = () => go('list'); return;
+  }
+  const lbl = it => it.entity === 'debtor' ? 'زبون: ' + ((it.payload && it.payload.debtor && it.payload.debtor.name) || '—') : 'عملية: ' + fmt(it.payload && it.payload.amount) + ' (' + ((it.payload && it.payload.type) === 'payment' ? 'دفعة' : 'دين') + ')';
+  app.innerHTML = `<div class="wrap"><div class="card">${head}<p class="mut" style="margin-top:8px">المحذوفات تبقى هنا وتكدر تسترجعها بأي وقت.</p></div>
+  ${(data || []).map(it => `<div class="card"><div class="row"><b>${esc(lbl(it))}</b></div>
+  <div class="mut">حذفها ${esc(it.deleted_by_name || '')} • ${esc(String(it.created_at || '').slice(0, 16).replace('T', ' '))}</div>
+  <div class="row" style="margin-top:8px"><button class="sm" data-rs="${it.id}">♻️ استرجاع</button><button class="sm red" data-pg="${it.id}">حذف نهائي</button></div></div>`).join('') || '<div class="empty"><div class="big">🗑️</div>السلة فارغة</div>'}</div>`;
+  $('bk').onclick = () => go('list');
+  app.querySelectorAll('[data-rs]').forEach(b => b.onclick = async () => {
+    const it = (data || []).find(x => x.id === b.dataset.rs); if (!it) return;
+    if (!confirm('استرجاع هذا العنصر؟')) return;
+    let err = null;
+    if (it.entity === 'transaction') { const r = await sb.from('transactions').insert(it.payload); err = r.error; }
+    else if (it.entity === 'debtor') {
+      const r1 = await sb.from('debtors').insert(it.payload.debtor); err = r1.error;
+      if (!err && it.payload.transactions && it.payload.transactions.length) { const r2 = await sb.from('transactions').insert(it.payload.transactions); err = r2.error; }
+    }
+    if (err) return alert('تعذر الاسترجاع: ' + err.message);
+    await sb.from('trash_items').delete().eq('id', it.id);
+    logAct('restore', it.entity, it.id, null);
+    await loadDebtors(); render();
+  });
+  app.querySelectorAll('[data-pg]').forEach(b => b.onclick = async () => {
+    if (!confirm('حذف نهائي؟ ما راح تكدر تسترجعه بعدها.')) return;
+    await sb.from('trash_items').delete().eq('id', b.dataset.pg);
+    logAct('purge', 'trash', b.dataset.pg, null);
+    render();
+  });
+}
+async function auditHtml(app) {
+  app.innerHTML = '<div class="wrap"><div class="card mut">جاري التحميل...</div></div>';
+  const { data, error } = await sb.from('audit_log').select('*').order('created_at', { ascending: false }).limit(100);
+  const head = '<div class="row"><h3>📜 سجل النشاط</h3><button class="sm sec" id="bk">رجوع</button></div>';
+  if (error) {
+    app.innerHTML = `<div class="wrap"><div class="card">${head}<p class="mut" style="margin-top:10px">السجل غير مفعّل بعد. طبّق ملف <b>supabase-upgrade.sql</b> في Supabase (SQL Editor) أولاً.</p></div></div>`;
+    $('bk').onclick = () => go('list'); return;
+  }
+  app.innerHTML = `<div class="wrap"><div class="card">${head}</div>
+  ${(data || []).map(a => `<div class="card"><div class="row"><b>${esc(ACT_LBL[a.action] || a.action)}</b><span class="mut">${esc(String(a.created_at || '').slice(0, 16).replace('T', ' '))}</span></div>
+  <div class="mut">بواسطة ${esc(a.user_name || '—')}${a.details && a.details.amount ? ' • ' + fmt(a.details.amount) : ''}${a.details && a.details.name ? ' • ' + esc(a.details.name) : ''}</div></div>`).join('') || '<div class="empty"><div class="big">📜</div>لا يوجد نشاط مسجل بعد</div>'}</div>`;
+  $('bk').onclick = () => go('list');
 }
 
 boot();
